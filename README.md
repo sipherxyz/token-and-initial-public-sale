@@ -16,7 +16,8 @@ Compile the contracts:
 
 ## Test
 
-Before running tests, make sure you are using the project typescript version to prevent any type erros
+Before running tests, make sure you are using the project typescript version to prevent any type errors
+
 Run all Mocha tests:
 
 `yarn hardhat test`
