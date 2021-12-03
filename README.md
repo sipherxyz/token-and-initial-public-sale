@@ -1,4 +1,6 @@
-#Sipher ERC20
+## **Sipher ERC20 & Initial Public Sale Contract**
+
+This Contract is coded and developed by Vihali Technology MTV Company Limited and is entirely transferred to Dopa JSC Limited under the Contract for Software Development Services. Accordingly, the ownership and all intellectual property rights including but not limited to rights which arise in the course of or in connection with the Contract shall belong to and are the sole property of Dopa JSC Limited
 
 ## Usage
 
