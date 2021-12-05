@@ -3,16 +3,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import { expect } from "chai"
 import { ethers } from "hardhat"
 import { describe } from "mocha"
-import {
-    SipherIBCO,
-    SipherIBCO__factory,
-    SipherToken,
-    SipherToken__factory,
-    MockStakingPool,
-    MockStakingPool__factory,
-} from "../typechain-types"
+import { SipherIBCO, SipherIBCO__factory, SipherToken, SipherToken__factory } from "../typechain-types"
 import { mineNewBlockAt, revertToSnapshot, snapshot, etherToWei } from "./utils/hardhat"
-import { ONE_DAY, ADDRESS_ZERO } from "./utils/constants"
+import { ONE_DAY } from "./utils/constants"
 import { ibcoWithdrawTable } from "./data"
 
 describe("Sipher IBCO", () => {
@@ -27,7 +20,6 @@ describe("Sipher IBCO", () => {
     let snapshotId: any
     let SipherTokenContract: SipherToken
     let SipherIBCOContract: SipherIBCO
-    let MockStakingPoolContract: MockStakingPool
     let owner: SignerWithAddress
     let notOwner: SignerWithAddress
     let user: SignerWithAddress
@@ -37,11 +29,9 @@ describe("Sipher IBCO", () => {
     const deployContracts = async () => {
         const SipherTokenFactory = (await ethers.getContractFactory("SipherToken")) as SipherToken__factory
         const SipherIBCOFactory = (await ethers.getContractFactory("SipherIBCO")) as SipherIBCO__factory
-        const MockStakingPoolFactory = (await ethers.getContractFactory("MockStakingPool")) as MockStakingPool__factory
 
         SipherTokenContract = await SipherTokenFactory.deploy("Sipher Token", "SIPHER", SIPHER_TOKEN_START_TIME)
         SipherIBCOContract = await SipherIBCOFactory.deploy(SipherTokenContract.address)
-        MockStakingPoolContract = await MockStakingPoolFactory.deploy()
     }
 
     const goBack = async () => {
@@ -92,17 +82,17 @@ describe("Sipher IBCO", () => {
         before(async () => {
             await goBack()
         })
-        describe("when the offering hasn't started", () => {
-            before(async () => {
-                await mineNewBlockAt(START_TIME - ONE_DAY)
-            })
+        // describe("when the offering hasn't started", () => {
+        //     before(async () => {
+        //         await mineNewBlockAt(START_TIME - ONE_DAY)
+        //     })
 
-            it("should revert", async () => {
-                await expect(SipherIBCOContract.connect(user).deposit({ value: ONE_ETHER })).to.be.revertedWith(
-                    "The offering has not started yet"
-                )
-            })
-        })
+        //     it("should revert", async () => {
+        //         await expect(SipherIBCOContract.connect(user).deposit({ value: ONE_ETHER })).to.be.revertedWith(
+        //             "The offering has not started yet"
+        //         )
+        //     })
+        // })
 
         describe("when the offering is on going", () => {
             before(async () => {
@@ -161,15 +151,15 @@ describe("Sipher IBCO", () => {
             await goBack()
         })
 
-        describe("when the offering has't started", () => {
-            before(async () => {
-                await mineNewBlockAt(START_TIME - ONE_DAY)
-            })
+        // describe("when the offering has't started", () => {
+        //     before(async () => {
+        //         await mineNewBlockAt(START_TIME - ONE_DAY)
+        //     })
 
-            it("should revert", async () => {
-                await expect(SipherIBCOContract.connect(user).claim()).to.be.revertedWith("The offering has not ended")
-            })
-        })
+        //     it("should revert", async () => {
+        //         await expect(SipherIBCOContract.connect(user).claim()).to.be.revertedWith("The offering has not ended")
+        //     })
+        // })
 
         describe("when the offering is ongoing", () => {
             before(async () => {
@@ -421,17 +411,17 @@ describe("Sipher IBCO", () => {
             await SipherTokenContract.transfer(SipherIBCOContract.address, TOTAL_DISTRIBUTE_AMOUNT)
         })
 
-        describe("when the offering hasn't started", () => {
-            before(async () => {
-                await mineNewBlockAt(START_TIME - ONE_DAY)
-            })
+        // describe("when the offering hasn't started", () => {
+        //     before(async () => {
+        //         await mineNewBlockAt(START_TIME - ONE_DAY)
+        //     })
 
-            it("should revert", async () => {
-                await expect(SipherIBCOContract.connect(user).withdraw(ONE_ETHER)).to.be.revertedWith(
-                    "Only withdrawable during the Offering duration"
-                )
-            })
-        })
+        //     it("should revert", async () => {
+        //         await expect(SipherIBCOContract.connect(user).withdraw(ONE_ETHER)).to.be.revertedWith(
+        //             "Only withdrawable during the Offering duration"
+        //         )
+        //     })
+        // })
 
         describe(`when the offering is ongoing`, () => {
             before(async () => {
@@ -598,6 +588,15 @@ describe("Sipher IBCO", () => {
                     "Ownable: caller is not the owner"
                 )
             })
+            it("should revert", async () => {
+                await SipherIBCOContract.transferOwnership(notOwner.address)
+                await expect(SipherIBCOContract.connect(owner).withdrawSaleFunds()).to.be.revertedWith(
+                    "Ownable: caller is not the owner"
+                )
+            })
+            after(async () => {
+                await SipherIBCOContract.connect(notOwner).transferOwnership(owner.address)
+            })
         })
 
         describe("when the caller the owner", () => {
@@ -648,7 +647,7 @@ describe("Sipher IBCO", () => {
         })
     })
 
-    describe("withdrawUnclaimedSIPHER", async () => {
+    describe("withdrawRemainedSIPHER", async () => {
         before(async () => {
             await goBack()
             await mineNewBlockAt(START_TIME)
@@ -660,6 +659,15 @@ describe("Sipher IBCO", () => {
                 await expect(SipherIBCOContract.connect(notOwner).withdrawRemainedSIPHER()).to.be.revertedWith(
                     "Ownable: caller is not the owner"
                 )
+            })
+            it("should revert", async () => {
+                await SipherIBCOContract.transferOwnership(notOwner.address)
+                await expect(SipherIBCOContract.connect(owner).withdrawRemainedSIPHER()).to.be.revertedWith(
+                    "Ownable: caller is not the owner"
+                )
+            })
+            after(async () => {
+                await SipherIBCOContract.connect(notOwner).transferOwnership(owner.address)
             })
         })
 
@@ -699,7 +707,7 @@ describe("Sipher IBCO", () => {
                         await SipherIBCOContract.connect(owner).withdrawRemainedSIPHER()
                         const newTokenbalance = await SipherTokenContract.balanceOf(owner.address)
 
-                        expect(newTokenbalance).to.be.equal(oldTokenBalance.add(ONE_TOKEN.mul(2500000)))
+                        expect(newTokenbalance).to.be.equal(oldTokenBalance.add(ONE_TOKEN.mul(2500000).sub(1)))
                     })
                 })
             })
@@ -714,9 +722,18 @@ describe("Sipher IBCO", () => {
 
         describe("when the caller is not the owner", () => {
             it("should revert", async () => {
-                await expect(SipherIBCOContract.connect(notOwner).withdrawRemainedSIPHER()).to.be.revertedWith(
+                await expect(SipherIBCOContract.connect(notOwner).withdrawUnclaimedSIPHER()).to.be.revertedWith(
                     "Ownable: caller is not the owner"
                 )
+            })
+            it("should revert", async () => {
+                await SipherIBCOContract.transferOwnership(notOwner.address)
+                await expect(SipherIBCOContract.connect(owner).withdrawUnclaimedSIPHER()).to.be.revertedWith(
+                    "Ownable: caller is not the owner"
+                )
+            })
+            after(async () => {
+                await SipherIBCOContract.connect(notOwner).transferOwnership(owner.address)
             })
         })
 
@@ -752,132 +769,6 @@ describe("Sipher IBCO", () => {
                         await SipherIBCOContract.connect(owner).withdrawUnclaimedSIPHER()
                         const newTokenBalance = await SipherTokenContract.balanceOf(owner.address)
                         expect(newTokenBalance).to.equal(oldTokenBalance.add(TOTAL_DISTRIBUTE_AMOUNT))
-                    })
-                })
-            })
-        })
-    })
-
-    describe("setApproveForStaking", () => {
-        before(async () => {
-            await goBack()
-            await SipherIBCOContract.connect(owner).setApproveForStaking(MockStakingPoolContract.address)
-            await SipherTokenContract.transfer(SipherIBCOContract.address, TOTAL_DISTRIBUTE_AMOUNT)
-            await mineNewBlockAt(START_TIME)
-        })
-
-        describe("when the caller is not the owner", () => {
-            it("should revert", async () => {
-                await expect(SipherIBCOContract.connect(notOwner).withdrawRemainedSIPHER()).to.be.revertedWith(
-                    "Ownable: caller is not the owner"
-                )
-            })
-        })
-
-        describe("when the offering has ended", () => {
-            before(async () => {
-                await mineNewBlockAt(END_TIME + 100)
-            })
-
-            it("should revert", async () => {
-                await expect(
-                    SipherIBCOContract.connect(owner).setApproveForStaking(MockStakingPoolContract.address)
-                ).to.be.revertedWith("Only allow edit before the Offer ends")
-            })
-        })
-
-        describe("when the address is address zero", () => {
-            before(async () => {
-                await goBack()
-                await SipherTokenContract.transfer(SipherIBCOContract.address, TOTAL_DISTRIBUTE_AMOUNT)
-                await mineNewBlockAt(START_TIME)
-            })
-
-            it("should revert", async () => {
-                await expect(SipherIBCOContract.connect(owner).setApproveForStaking(ADDRESS_ZERO)).to.be.revertedWith(
-                    "Invalid address"
-                )
-            })
-        })
-    })
-
-    describe("claimAndDepositForStaking", () => {
-        before(async () => {
-            await goBack()
-            await SipherIBCOContract.connect(owner).setApproveForStaking(MockStakingPoolContract.address)
-            await SipherTokenContract.transfer(SipherIBCOContract.address, TOTAL_DISTRIBUTE_AMOUNT)
-            await mineNewBlockAt(START_TIME)
-        })
-
-        describe("when the offering hasn't ended", () => {
-            it("should revert", async () => {
-                await expect(
-                    SipherIBCOContract.connect(user).claimAndDepositForStaking(ONE_TOKEN, 600)
-                ).to.be.revertedWith("The offering has not ended")
-            })
-        })
-
-        describe("when the offering has ended", () => {
-            before(async () => {
-                await mineNewBlockAt(END_TIME + 100)
-            })
-
-            describe("when the input duration is less than 600 seconds", () => {
-                it("should revert", async () => {
-                    await expect(
-                        SipherIBCOContract.connect(user).claimAndDepositForStaking(ONE_TOKEN, 0)
-                    ).to.be.revertedWith("Minimum duration is 10 minutes")
-                })
-            })
-
-            describe("when the input duration is valid", () => {
-                describe("when input amount is 0", () => {
-                    it("should revert", async () => {
-                        await expect(
-                            SipherIBCOContract.connect(user).claimAndDepositForStaking(ONE_TOKEN.mul(0), 600)
-                        ).to.be.revertedWith("Invalid amount")
-                    })
-                })
-
-                describe("when input amount is greater than claimable amount", () => {
-                    before(async () => {
-                        await goBack()
-                        await SipherIBCOContract.connect(owner).setApproveForStaking(MockStakingPoolContract.address)
-                        await SipherTokenContract.transfer(SipherIBCOContract.address, TOTAL_DISTRIBUTE_AMOUNT)
-                        await mineNewBlockAt(START_TIME)
-                        await SipherIBCOContract.connect(user).deposit({ value: ONE_TOKEN })
-                        await mineNewBlockAt(END_TIME)
-                    })
-
-                    it("should revert", async () => {
-                        await expect(
-                            SipherIBCOContract.connect(user).claimAndDepositForStaking(ONE_TOKEN.mul(1000000), 600)
-                        ).to.be.revertedWith("Invalid amount")
-                    })
-                })
-
-                describe("when input amount is valid", () => {
-                    beforeEach(async () => {
-                        await goBack()
-                        await SipherIBCOContract.connect(owner).setApproveForStaking(MockStakingPoolContract.address)
-                        await SipherTokenContract.transfer(SipherIBCOContract.address, TOTAL_DISTRIBUTE_AMOUNT)
-                        await mineNewBlockAt(START_TIME)
-                        await SipherIBCOContract.connect(user).deposit({ value: ONE_ETHER.mul(10) })
-                        await mineNewBlockAt(END_TIME)
-                    })
-
-                    it("should decrease user's total deposited, therefore decreate estimated receive tokens", async () => {
-                        const receivedToken = await SipherIBCOContract.getEstReceivedToken(user.address)
-                        await SipherIBCOContract.connect(user).claimAndDepositForStaking(ONE_TOKEN, 600)
-                        const newReceivedToken = await SipherIBCOContract.getEstReceivedToken(user.address)
-
-                        return expect(newReceivedToken).to.be.equal(receivedToken.sub(ONE_TOKEN))
-                    })
-
-                    it("should emit ClaimAndDepositToStake event", async () => {
-                        expect(await SipherIBCOContract.connect(user).claimAndDepositForStaking(ONE_TOKEN, 600))
-                            .to.emit(SipherIBCOContract, "ClaimAndDepositToStake")
-                            .withArgs(user.address, ONE_TOKEN, 600)
                     })
                 })
             })
