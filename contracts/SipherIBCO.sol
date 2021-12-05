@@ -7,7 +7,6 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./interfaces/ITimeLockPool.sol";
 
 /**
  * @dev Implement Initial Bonding Curve Offering for Sipher Token.
@@ -18,7 +17,6 @@ contract SipherIBCO is Ownable {
     event Claim(address indexed account, uint256 userShare, uint256 sipherAmount);
     event Deposit(address indexed account, uint256 amount);
     event Withdraw(address indexed account, uint256 amount);
-    event ClaimAndDepositToStake(address indexed account, uint256 amount, uint256 duration);
 
     
     uint256 public constant DECIMALS = 10 ** 18; // Sipher Token has the same decimals as Ether (18)
@@ -27,7 +25,6 @@ contract SipherIBCO is Ownable {
     uint256 public constant TOTAL_DISTRIBUTE_AMOUNT = 40000000 * DECIMALS;
     uint256 public constant MINIMAL_PROVIDE_AMOUNT = 3200 ether;
     uint256 public totalProvided = 0;
-    ITimeLockPool public SipherStakingPool;
 
     mapping(address => uint256) public provided;
     mapping(address => uint256) private accumulated;
@@ -213,7 +210,7 @@ contract SipherIBCO is Ownable {
         require(totalProvided < MINIMAL_PROVIDE_AMOUNT, "Total provided must be less than minimal provided");
 
         uint256 remainedSipher = TOTAL_DISTRIBUTE_AMOUNT -
-            ((TOTAL_DISTRIBUTE_AMOUNT * totalProvided) / MINIMAL_PROVIDE_AMOUNT);
+            ((TOTAL_DISTRIBUTE_AMOUNT * totalProvided) / MINIMAL_PROVIDE_AMOUNT) - 1;
         SIPHER.safeTransfer(owner(), remainedSipher);
     }
 
@@ -229,31 +226,5 @@ contract SipherIBCO is Ownable {
         require(SIPHER.balanceOf(address(this)) != 0, "No token to withdraw");
 
         SIPHER.safeTransfer(owner(), SIPHER.balanceOf(address(this)));
-    }
-
-    /**
-     * @dev Set approval for Sipher Staking Pool
-     */
-    function setApproveForStaking(address _sipherStakingPool) external onlyOwner {
-        require(block.timestamp < END, "Only allow edit before the Offer ends");
-        require(_sipherStakingPool != address(0), "Invalid address");
-
-        SipherStakingPool = ITimeLockPool(_sipherStakingPool);
-        SIPHER.safeApprove(_sipherStakingPool, type(uint256).max);
-    }
-
-    /**
-     * @dev Customer claim their $SIPHER and deposit to Sipher Staking Contract
-     */
-    function claimAndDepositForStaking(uint256 amount, uint256 duration) external {
-        require(block.timestamp > END, "The offering has not ended");
-        require(duration >= 600, "Minimum duration is 10 minutes");
-        require(amount <= _getEstReceivedToken(msg.sender) && amount > 0, "Invalid amount");
-
-        provided[msg.sender] -= (amount * getEstTokenPrice()) / DECIMALS;
-
-        SipherStakingPool.deposit(amount, duration, msg.sender);
-
-        emit ClaimAndDepositToStake(msg.sender, amount, duration);
     }
 }
